@@ -44,6 +44,18 @@ Web UI at `http://localhost:8080`
 - [Ollama](https://ollama.com) running on the host
 - 6GB+ VRAM recommended
 
+## Regulatory Alignment
+
+Parapet AI's architecture supports compliance with key EU regulations:
+
+| Regulation | How Parapet Helps |
+|---|---|
+| **EU AI Act** | Local-only execution meets data minimization and privacy-by-design requirements. No third-party data processing — classified as minimal risk (see [analysis](docs/EU-AI-ACT-RISK-CLASSIFICATION.md)) |
+| **NIS2** | 5-layer hardening, seccomp profiles, and container isolation support Article 21 risk management measures (see [mapping](docs/NIS2-COMPLIANCE-MAPPING.md)) |
+| **DORA** | Read-only rootfs, capability dropping, and immutable infrastructure align with ICT risk management (Articles 9-16) and operational resilience testing requirements |
+
+*These materials describe architectural alignment, not legal certification.*
+
 ## Project Structure
 
 ```
