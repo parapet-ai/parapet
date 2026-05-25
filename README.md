@@ -63,6 +63,17 @@ Web UI at `http://localhost:8080`
 └── prompts/             # Domain-specific prompts
 ```
 
+## Legal
+
+| | ID | Jurisdiction | Status |
+|---|---|---|---|
+| Patent | P.455821 | Poland (UPRP) | Pending |
+| Trademark | Z.603439 | Poland (UPRP) | Pending |
+
+Patent priority date: 2026-05-18  
+Trademark priority date: 2026-05-25  
+All rights reserved. See [IP-NOTICE.md](IP-NOTICE.md).
+
 ## License
 
 MIT — see [LICENSE](LICENSE)
