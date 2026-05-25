@@ -1,6 +1,6 @@
-# Copyright (c) 2026 Andrzej Dobosz. All rights reserved.
-# Priority Date: 2026-05-18 | Patent Pending: UPRP P.455821
-# License: MIT -- see LICENSE file
+# Copyright (c) 2026 Parapet AI Contributors
+# Patent Pending: UPRP P.455821 | Trademark Pending: UPRP Z.603439
+# Licensed under MIT -- see LICENSE file
 
 services:
   parapet-agent:

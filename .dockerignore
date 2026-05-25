@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+.git
+.gitignore
+*.md
+!requirements.txt
+.env
+.secrets
+logs/
+workspace/
+sessions/
+tests/
+benchmarks/
+*.b64
+*.tmp.*
