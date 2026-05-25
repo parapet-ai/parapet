@@ -1,0 +1,513 @@
+{
+  "config": {
+    "total_vram_gb": 6.0,
+    "system_vram_overhead_gb": 1.0,
+    "green_headroom_gb": 0.5,
+    "yellow_overshoot_gb": 0.5,
+    "flash_attention_min_cc": 7.5,
+    "default_ctx_green": 4096,
+    "default_ctx_yellow": 2048,
+    "watchdog_tolerance_gb": 0.1,
+    "watchdog_poll_seconds": [
+      8,
+      15
+    ],
+    "compress_at_ctx_pct": 0.7,
+    "generated": "2026-05-16",
+    "updated": "2026-05-18",
+    "updated_by": "post-optimization-vram-measurement",
+    "generated_by": "MODEL-VRAM-AUDIT v2"
+  },
+  "task_defaults": {
+    "coding": "qwen2.5-coder:3b",
+    "general": "qwen2.5:3b",
+    "legal": "llama3.2:3b",
+    "pentest": "openchat:7b",
+    "polish": "bielik-q5:latest",
+    "speed": "gemma2:2b",
+    "reasoning": "deepseek-r1:1.5b"
+  },
+  "models": {
+    "deepseek-coder:1.3b": {
+      "vram_gb": 2.43,
+      "tier": "green",
+      "tools": false,
+      "categories": [
+        "coding",
+        "scripting",
+        "speed"
+      ],
+      "display": "[CODING + SPEED] DeepSeek Coder 1.3B -- fastest (130-213 tok/s), coding specialist, fits 6GB comfortably (~3.5GB runtime)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 4096,
+      "system_prompt": "coding.md",
+      "architecture": "DeepSeek-Coder",
+      "kv_heads": 2,
+      "kv_cache_4096_gb": 0.15
+    },
+    "deepseek-r1:1.5b": {
+      "vram_gb": 2.56,
+      "tier": "green",
+      "tools": false,
+      "categories": [
+        "reasoning",
+        "logic",
+        "analysis"
+      ],
+      "display": "[REASONING + LOGIC] DeepSeek R1 1.5B -- thinks before answering, great at riddles/logic/analysis. ctx<=2048 (~4.9GB runtime)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 4096,
+      "system_prompt": "general.md",
+      "architecture": "DeepSeek-R1-moe",
+      "kv_heads": 2,
+      "kv_cache_2048_gb": 0.09
+    },
+    "gemma2:2b": {
+      "vram_gb": 3.38,
+      "tier": "green",
+      "categories": [
+        "speed",
+        "all-rounder"
+      ],
+      "display": "[SPEED] Gemma 2 2B -- fast (68 avg tok/s), good all-rounder. ctx<=2048 (~4.4GB runtime)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 4096,
+      "system_prompt": "general.md",
+      "architecture": "Gemma2",
+      "kv_heads": 8,
+      "kv_cache_2048_gb": 0.3,
+      "tools": true
+    },
+    "deepseek-r1:7b": {
+      "vram_gb": 5.29,
+      "tier": "yellow",
+      "tools": false,
+      "categories": [
+        "reasoning",
+        "logic",
+        "analysis"
+      ],
+      "display": "[REASONING 7B] DeepSeek R1 7B -- full 7B chain-of-thought reasoning, thinks before answering. ctx<=2048 (~5.0GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "general.md",
+      "architecture": "DeepSeek-R1-moe",
+      "kv_heads": 8,
+      "kv_cache_2048_gb": 0.3
+    },
+    "qwen3-vl:2b": {
+      "vram_gb": 3.78,
+      "tier": "green",
+      "tools": false,
+      "categories": [
+        "vision",
+        "ocr"
+      ],
+      "display": "[VISION ONLY] Qwen3-VL 2B -- OCR, diagrams, image description. NOT for text tasks (scored 7% on text domains). ctx=4096",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 4096,
+      "system_prompt": "general.md",
+      "architecture": "Qwen3-VL",
+      "vision_only": true,
+      "text_score_warning": "7% avg on text domain tests — this is a vision/OCR model, not a text model. Do not use for coding, translation, or pentesting.",
+      "kv_heads": 2,
+      "kv_cache_2048_gb": 0.15
+    },
+    "qwen2.5:3b": {
+      "vram_gb": 3.16,
+      "tier": "green",
+      "tools": true,
+      "categories": [
+        "all-rounder",
+        "coding"
+      ],
+      "display": "[ALL-ROUNDER + CODING] Qwen 2.5 3B -- best tool calling, strong code gen, multilingual. ctx<=2048 (~4.2GB runtime)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 4096,
+      "system_prompt": "general.md",
+      "architecture": "Qwen2.5",
+      "kv_heads": 2,
+      "kv_cache_2048_gb": 0.15
+    },
+    "qwen2.5-coder:3b": {
+      "vram_gb": 3.15,
+      "tier": "green",
+      "categories": [
+        "coding",
+        "all-rounder"
+      ],
+      "display": "[CODING] Qwen 2.5 Coder 3B -- strongest 3B code generation. ctx<=2048 (~4.2GB runtime)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 4096,
+      "system_prompt": "coding.md",
+      "architecture": "Qwen2.5",
+      "kv_heads": 2,
+      "kv_cache_2048_gb": 0.15,
+      "tools": true
+    },
+    "llama3.2:3b": {
+      "vram_gb": 3.52,
+      "tier": "green",
+      "categories": [
+        "legal",
+        "spanish",
+        "all-rounder"
+      ],
+      "display": "[LEGAL + SPANISH] Llama 3.2 3B -- Meta latest, solid reasoning, good multilingual. ctx<=2048 (~4.5GB runtime)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 4096,
+      "system_prompt": "legal-spanish.md",
+      "architecture": "Llama3.2",
+      "kv_heads": 8,
+      "kv_cache_2048_gb": 0.12,
+      "tools": true
+    },
+    "nchapman/dolphin3.0-qwen2.5:3b": {
+      "vram_gb": 3.16,
+      "tier": "green",
+      "tools": false,
+      "categories": [
+        "unshackled",
+        "pentesting",
+        "osint",
+        "coding"
+      ],
+      "display": "[UNSHACKLED] Dolphin 3.0 Qwen 2.5 3B -- zero safety filters, pentesting/OSINT/red team. ctx<=2048 (~4.2GB runtime)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 4096,
+      "system_prompt": "pentest.md",
+      "architecture": "Qwen2.5",
+      "kv_heads": 2,
+      "kv_cache_2048_gb": 0.15
+    },
+    "stable-code:3b": {
+      "vram_gb": 3.73,
+      "tier": "green",
+      "categories": [
+        "coding"
+      ],
+      "display": "[CODING] Stable Code 3B -- Stability AI fill-in-middle code specialist. ctx<=2048 (~4.8GB runtime)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 4096,
+      "system_prompt": "coding.md",
+      "architecture": "StableLM",
+      "kv_heads": 32,
+      "kv_cache_2048_gb": 0.4,
+      "tools": false
+    },
+    "gemma3:4b": {
+      "vram_gb": 4.5,
+      "tier": "yellow",
+      "tools": false,
+      "categories": [
+        "vision",
+        "general"
+      ],
+      "display": "[VISION] Gemma3 4B -- vision capable, general tasks. ctx<=2048 (~4.2GB runtime)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "general.md",
+      "architecture": "Gemma3",
+      "kv_heads": 8,
+      "kv_cache_2048_gb": 0.18
+    },
+    "ministral-3:3b-instruct-2512-q4_K_M": {
+      "vram_gb": 5.22,
+      "tier": "yellow",
+      "tools": true,
+      "categories": [
+        "legal",
+        "spanish",
+        "all-rounder",
+        "coding",
+        "vision"
+      ],
+      "display": "[LEGAL + VISION] Ministral 3B 2512 Q4_K_M -- official Mistral AI 3B, vision + native tools, best EU multilingual. ctx<=2048 (~5.2GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "legal-spanish.md",
+      "architecture": "Mistral-3B",
+      "kv_heads": 8,
+      "kv_cache_2048_gb": 0.12
+    },
+    "phi3:mini": {
+      "vram_gb": 4.93,
+      "tier": "yellow",
+      "categories": [
+        "legal",
+        "coding"
+      ],
+      "display": "[LEGAL + CODING] Phi-3 Mini 3.8B -- most precise, factual, low hallucination. ctx<=2048 (~5.1GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "coding.md",
+      "architecture": "Phi-3",
+      "kv_heads": 32,
+      "kv_cache_2048_gb": 0.4,
+      "tools": true
+    },
+    "phi4-mini": {
+      "vram_gb": 5.2,
+      "tier": "yellow",
+      "tools": true,
+      "categories": [
+        "coding",
+        "logic",
+        "legal"
+      ],
+      "display": "[CODING + LOGIC] Phi-4 Mini -- strong logic/coding, phi3:mini upgrade. ctx<=2048 (~5.2GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical",
+      "ctx_default": 2048,
+      "system_prompt": "coding.md",
+      "architecture": "Phi-4",
+      "kv_heads": 32,
+      "kv_cache_2048_gb": 0.4
+    },
+    "bielik-q5:latest": {
+      "vram_gb": 4.35,
+      "tier": "yellow",
+      "categories": [
+        "polish",
+        "all-rounder"
+      ],
+      "display": "[POLISH SWEET SPOT] Bielik 4.5B v3 Q5_K_M -- ~99% quality, best Polish for 6GB. ctx<=2048 (~5.3GB runtime -- very tight!)",
+      "quant": "Q5_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "polish.md",
+      "architecture": "Qwen2.5-derived",
+      "notes": "Created via ollama create -f Modelfile from second-state GGUF. Close Firefox before loading.",
+      "tools": false
+    },
+    "bielik-q4:latest": {
+      "vram_gb": 3.89,
+      "tier": "green",
+      "categories": [
+        "polish",
+        "all-rounder"
+      ],
+      "display": "[POLISH FAST] Bielik 4.5B v3 Q4_K_M -- slightly faster, good Polish. ctx<=2048 (~5.0GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 4096,
+      "system_prompt": "polish.md",
+      "architecture": "Qwen2.5-derived",
+      "notes": "Created via ollama create -f Modelfile from second-state GGUF.",
+      "tools": false
+    },
+    "SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0": {
+      "vram_gb": 5.16,
+      "tier": "yellow",
+      "categories": [
+        "polish"
+      ],
+      "display": "[POLISH Q8] Bielik 4.5B v3 Q8_0 -- highest Polish quality, Q8 quantization. ctx<=2048 (~5.3GB runtime -- very tight!)",
+      "quant": "Q8_0",
+      "vram_source": "empirical-post-optimization",
+      "system_prompt": "polish.md",
+      "architecture": "Mistral-derived",
+      "tools": false,
+      "ctx_default": 2048
+    },
+    "mistral:7b-instruct": {
+      "vram_gb": 5.14,
+      "tier": "yellow",
+      "categories": [
+        "legal",
+        "spanish",
+        "all-rounder"
+      ],
+      "display": "[LEGAL + SPANISH 7B] Mistral 7B Instruct -- best European multilingual, legal documents. ctx<=2048 (~5.0GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "legal-spanish.md",
+      "architecture": "Mistral",
+      "kv_heads": 32,
+      "kv_cache_2048_gb": 0.27,
+      "kv_cache_4096_gb": 0.54,
+      "q4_0_vram_gb": 4.8,
+      "tools": true
+    },
+    "dolphin-mistral:7b": {
+      "vram_gb": 5.14,
+      "tier": "yellow",
+      "categories": [
+        "unshackled",
+        "pentesting",
+        "osint"
+      ],
+      "display": "[UNSHACKLED 7B] Dolphin-Mistral 7B -- uncensored 7B reasoning, pentesting/OSINT power. ctx<=2048 (~5.1GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "pentest.md",
+      "architecture": "Mistral",
+      "kv_heads": 32,
+      "kv_cache_2048_gb": 0.27,
+      "kv_cache_4096_gb": 0.54,
+      "tools": false
+    },
+    "openchat:7b": {
+      "vram_gb": 5.14,
+      "tier": "yellow",
+      "categories": [
+        "unshackled-lite",
+        "coding",
+        "osint"
+      ],
+      "display": "[UNSHACKLED-LITE 7B] OpenChat 7B -- low refusals, strong coder, OSINT recon. ctx<=2048 (~5.0GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "pentest.md",
+      "architecture": "Mistral",
+      "kv_heads": 32,
+      "kv_cache_2048_gb": 0.27,
+      "kv_cache_4096_gb": 0.54,
+      "tools": false
+    },
+    "qwen2.5:7b": {
+      "vram_gb": 5.21,
+      "tier": "yellow",
+      "categories": [
+        "all-rounder",
+        "coding"
+      ],
+      "display": "[ALL-ROUNDER 7B] Qwen 2.5 7B -- powerful 7B, strong code gen + general. ctx<=2048 (~5.2GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "general.md",
+      "architecture": "Qwen2.5",
+      "tools": true
+    },
+    "llama3.1:8b": {
+      "vram_gb": 5.27,
+      "tier": "yellow",
+      "categories": [
+        "all-rounder",
+        "legal"
+      ],
+      "display": "[ALL-ROUNDER 8B] Llama 3.1 8B -- Meta flagship, strong general reasoning. ctx<=2048 (~5.2GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "general.md",
+      "architecture": "Llama3.1",
+      "tools": true
+    },
+    "dolphin-llama3:8b": {
+      "vram_gb": 5.31,
+      "tier": "yellow",
+      "categories": [
+        "unshackled",
+        "pentesting",
+        "osint"
+      ],
+      "display": "[UNSHACKLED 8B] Dolphin-Llama 3 8B -- uncensored 8B, pentesting/OSINT. ctx<=2048 (~5.1GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "pentest.md",
+      "architecture": "Llama3",
+      "tools": false
+    },
+    "wizardlm2:7b": {
+      "vram_gb": 5.12,
+      "tier": "yellow",
+      "categories": [
+        "coding",
+        "all-rounder"
+      ],
+      "display": "[CODING 7B] WizardLM 2 7B -- strong code generation, solid all-round. ctx<=2048 (~5.1GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "coding.md",
+      "architecture": "Mistral",
+      "tools": false
+    },
+    "qwen2.5-coder:7b": {
+      "vram_gb": 5.1,
+      "tier": "yellow",
+      "categories": [
+        "coding"
+      ],
+      "display": "[CODING 7B] Qwen 2.5 Coder 7B -- strongest code gen in registry. ctx<=2048 (~5.3GB runtime -- very tight!)",
+      "quant": "Q4_K_M",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "system_prompt": "coding.md",
+      "architecture": "Qwen2.5",
+      "tools": true
+    },
+    "phi4-mini:latest": {
+      "vram_gb": 4.59,
+      "tier": "yellow",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048
+    },
+    "dolphincoder:7b": {
+      "vram_gb": 5.29,
+      "tier": "yellow",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "categories": [
+        "unshackled",
+        "coding"
+      ],
+      "display": "[UNSHACKLED CODING] DolphinCoder 7B -- uncensored StarCoder2-based, 100% coding score. ctx<=2048 (~5.29GB runtime -- very tight!)",
+      "quant": "Q4_K_M",
+      "system_prompt": "coding.md",
+      "architecture": "StarCoder2",
+      "tools": false
+    },
+    "nchapman/dolphin3.0-llama3:8b": {
+      "vram_gb": 3.55,
+      "tier": "green",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 4096,
+      "categories": [
+        "unshackled",
+        "pentesting",
+        "osint"
+      ],
+      "display": "[UNSHACKLED 8B] Dolphin 3.0 Llama 3 8B -- uncensored 8B on Llama3 base, surprisingly VRAM-light (Q4_K_M?). ctx=4096 OK (~3.55GB runtime)",
+      "quant": "Q4_K_M",
+      "system_prompt": "pentest.md",
+      "architecture": "Llama3",
+      "tools": false,
+      "note": "VRAM is suspiciously low for 8B — verify quant and re-measure"
+    },
+    "SpeakLeash/bielik-7b-instruct-v0.1-gguf": {
+      "vram_gb": 5.11,
+      "tier": "yellow",
+      "vram_source": "empirical-post-optimization",
+      "ctx_default": 2048,
+      "categories": [
+        "polish",
+        "legal"
+      ],
+      "display": "[POLISH 7B] Bielik 7B Instruct v0.1 -- official SpeakLeash 7B, best Polish legal. ctx<=2048 (~5.11GB runtime -- tight!)",
+      "quant": "Q4_K_M",
+      "system_prompt": "polish.md",
+      "architecture": "Mistral-derived",
+      "tools": false
+    }
+  }
+}

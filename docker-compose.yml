@@ -1,0 +1,128 @@
+# Copyright (c) 2026 Andrzej Dobosz. All rights reserved.
+# Priority Date: 2026-05-18 | Patent Pending: UPRP P.455821
+# License: MIT -- see LICENSE file
+
+services:
+  parapet-agent:
+    image: parapet-agent:latest
+    container_name: parapet-agent
+    hostname: parapet
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "1.0"
+          memory: 2G
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:./security/seccomp-parapet.json
+    read_only: true
+    cap_drop:
+      - ALL
+    user: "1000:1000"
+    volumes:
+      - type: bind
+        source: ./workspace
+        target: /workspace
+      - type: bind
+        source: ./logs
+        target: /var/log/agent
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 512M
+    dns:
+      - 127.0.0.1
+    environment:
+      PYTHONUNBUFFERED: "1"
+      OLLAMA_HOST: http://host.docker.internal:11434/v1
+      MODEL: ${MODEL:-qwen2.5:3b}
+      ALLOW_SHELL: "true"
+      REQUIRE_CONFIRMATION: "true"
+      LOG_FORMAT: json
+      LOG_LEVEL: info
+      LOG_OUTPUT: /var/log/agent/agent.jsonl
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - ollama-net
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f parapet_agent || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  web-ui:
+    image: parapet-webui:latest
+    container_name: parapet-web-ui
+    hostname: web-ui
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:./security/seccomp-parapet.json
+    read_only: true
+    cap_drop:
+      - ALL
+    user: "1000:1000"
+    volumes:
+      - type: bind
+        source: ./workspace
+        target: /workspace
+      - type: bind
+        source: ./logs
+        target: /var/log/agent
+      - type: bind
+        source: ./models.json
+        target: /app/models.json
+        read_only: true
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 64M
+    dns:
+      - 127.0.0.1
+    environment:
+      PYTHONUNBUFFERED: "1"
+      MODEL: ${MODEL:-qwen2.5:3b}
+      OLLAMA_HOST: http://host.docker.internal:11434/v1
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - ollama-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    depends_on:
+      ollama-agent:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "25m"
+        max-file: "3"
+
+networks:
+  ollama-net:
+    driver: bridge

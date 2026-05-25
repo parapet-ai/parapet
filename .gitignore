@@ -1,0 +1,12 @@
+workspace/
+sessions/
+logs/
+*.log
+__pycache__/
+*.pyc
+benchmarks/
+PATENT_POLAND/evidence/
+*.spdx.json
+image-digests.txt
+.env
+*.tmp.*

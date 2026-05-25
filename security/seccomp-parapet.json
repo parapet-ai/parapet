@@ -1,0 +1,459 @@
+{
+  "defaultAction": "SCMP_ACT_ERRNO",
+  "comment": "parapet v3.0.0-APACHE seccomp profile. Default: DENY ALL. Only syscalls required by Ollama + Python inference are whitelisted. This is evidence for upgrading Patent #5 from 5-Layer to 6-Layer Container Security.",
+  "priorityDate": "2026-05-18",
+  "version": "1.0.0",
+  "architectures": [
+    "SCMP_ARCH_X86_64"
+  ],
+  "syscalls": [
+    {
+      "comment": "\u2500\u2500 Basic I/O \u2500\u2500 Required by Python runtime, file descriptor operations, stdin/stdout/stderr. Every user-space process needs these fundamental operations.",
+      "names": [
+        "read",
+        "write",
+        "open",
+        "openat",
+        "close",
+        "lseek",
+        "pread64",
+        "pwrite64",
+        "readv",
+        "writev",
+        "dup",
+        "dup2",
+        "dup3",
+        "pipe",
+        "pipe2"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 File Metadata \u2500\u2500 Required for file existence checks, size queries, symlink resolution. Ollama reads GGUF model files, tokenizer configs, and Modelfiles.",
+      "names": [
+        "stat",
+        "fstat",
+        "lstat",
+        "newfstatat",
+        "fstatfs",
+        "statfs",
+        "statx",
+        "access",
+        "faccessat",
+        "faccessat2",
+        "readlink",
+        "readlinkat"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Directory Operations \u2500\u2500 Required for scanning model directories, listing workspace files, the RAG index scans workspace trees.",
+      "names": [
+        "getdents64",
+        "getcwd"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Memory Management \u2500\u2500 CRITICAL. Ollama loads multi-GB GGUF models via mmap(). mprotect() sets executable pages for JIT-compiled kernels. mlock() pins model weights in GPU-accessible memory. brk() extends heap for Python objects.",
+      "names": [
+        "mmap",
+        "mprotect",
+        "brk",
+        "munmap",
+        "mremap",
+        "madvise",
+        "mseal",
+        "mlock",
+        "mlock2",
+        "munlock",
+        "mincore",
+        "msync"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 GPU / CUDA Communication \u2500\u2500 CRITICAL. ioctl() is the primary syscall for NVIDIA GPU driver communication. CUDA kernels, VRAM allocation, and tensor operations all funnel through ioctl() on the GPU device node.",
+      "names": [
+        "ioctl"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Threading & Synchronization \u2500\u2500 Ollama uses multi-threaded inference with pthreads. futex() is the kernel primitive for mutexes, condition variables, and thread synchronization. clone/clone3 create new threads. set_robust_list handles thread crash recovery.",
+      "names": [
+        "clone",
+        "clone3",
+        "futex",
+        "set_robust_list",
+        "get_robust_list",
+        "rseq",
+        "futex_waitv",
+        "futex_wake",
+        "futex_requeue"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Network \u2500\u2500 Localhost Only \u2500\u2500 Communication between ollama-agent and ollama-web-ui containers, and between containers and host Ollama (localhost:11434). All communication stays within Docker bridge network. socket() with AF_INET/AF_UNIX only.",
+      "names": [
+        "socket",
+        "connect",
+        "bind",
+        "listen",
+        "accept",
+        "accept4",
+        "getsockname",
+        "getpeername",
+        "setsockopt",
+        "getsockopt",
+        "sendto",
+        "recvfrom",
+        "sendmsg",
+        "recvmsg",
+        "sendmmsg",
+        "recvmmsg",
+        "shutdown"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Async I/O \u2500\u2500 Required by Python asyncio (FastAPI/uvicorn), Ollama streaming responses, SSE event streams for the web UI, and concurrent request handling.",
+      "names": [
+        "epoll_create1",
+        "epoll_ctl",
+        "epoll_pwait",
+        "epoll_wait",
+        "poll",
+        "ppoll",
+        "select",
+        "pselect6"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Process Lifecycle \u2500\u2500 exit/exit_group for clean shutdown. getpid/gettid for logging. rt_sigaction/rt_sigprocmask for signal handling (SIGTERM graceful shutdown, SIGCHLD reaping). tgkill for thread termination.",
+      "names": [
+        "exit",
+        "exit_group",
+        "getpid",
+        "gettid",
+        "getppid",
+        "getpgid",
+        "setpgid",
+        "tgkill",
+        "kill",
+        "tkill",
+        "rt_sigaction",
+        "rt_sigprocmask",
+        "rt_sigreturn",
+        "sigaltstack",
+        "restart_syscall",
+        "execve",
+        "execveat"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Time \u2500\u2500 clock_gettime() used by Python's time.monotonic(), CUDA timing, benchmark measurements. nanosleep() for polling loops and rate limiting.",
+      "names": [
+        "clock_gettime",
+        "clock_getres",
+        "clock_nanosleep",
+        "gettimeofday",
+        "nanosleep",
+        "times"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Scheduling & Affinity \u2500\u2500 sched_getaffinity/setaffinity allow thread pinning for optimal GPU inference performance. sched_yield allows cooperative multitasking between inference threads.",
+      "names": [
+        "sched_yield",
+        "sched_getaffinity",
+        "sched_setaffinity",
+        "sched_getparam",
+        "sched_getscheduler"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 System Information \u2500\u2500 uname() for OS detection in Python. sysinfo() for memory stats. getrusage() for profiling. prlimit64() for resource limit queries.",
+      "names": [
+        "uname",
+        "sysinfo",
+        "getrusage",
+        "prlimit64",
+        "getrlimit",
+        "getcpu"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Randomness & Security \u2500\u2500 getrandom() used by Python secrets module for token generation (auth tokens, crypto keys). Also used by TLS libraries if HTTPS is enabled for web UI.",
+      "names": [
+        "getrandom"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Thread-Local Storage \u2500\u2500 set_tid_address() and arch_prctl() are called by glibc during thread creation. Essential for any multi-threaded Linux process. prctl() used by Docker runtime for process naming.",
+      "names": [
+        "set_tid_address",
+        "arch_prctl",
+        "prctl"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Extended Attributes \u2500\u2500 Required by Docker overlay filesystem and some Python file operations on modern kernels.",
+      "names": [
+        "getxattr",
+        "fgetxattr",
+        "lgetxattr",
+        "listxattr",
+        "flistxattr"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 File Descriptor Control \u2500\u2500 fcntl() for non-blocking I/O, FD_CLOEXEC, file locking. Required by Python's socket and file I/O.",
+      "names": [
+        "fcntl",
+        "flock"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Resource Statistics \u2500\u2500 getrusage() for performance monitoring. getrlimit() for checking system limits before loading large models.",
+      "names": [
+        "getrusage",
+        "getrlimit",
+        "ugetrlimit"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Timers \u2500\u2500 timerfd_create/timerfd_settime used by Python asyncio event loop for timeouts. setitimer/getitimer for interval profiling.",
+      "names": [
+        "timerfd_create",
+        "timerfd_settime",
+        "timerfd_gettime",
+        "setitimer",
+        "getitimer"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Event FD \u2500\u2500 eventfd2() used by glibc for inter-thread signaling in the pthreads implementation. Essential for multi-threaded inference.",
+      "names": [
+        "eventfd2"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Memory Mapping Control \u2500\u2500 fallocate() reserves disk space for large model cache files. fadvise64() hints kernel about file access patterns for faster model loading. ftruncate() resizes files. sync/fsync flush model writes.",
+      "names": [
+        "fallocate",
+        "fadvise64",
+        "ftruncate",
+        "truncate",
+        "sync",
+        "fsync",
+        "fdatasync",
+        "syncfs",
+        "sync_file_range"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Inotify \u2500\u2500 File change monitoring used by Python auto-reload (uvicorn --reload) and workspace file watchers.",
+      "names": [
+        "inotify_init",
+        "inotify_init1",
+        "inotify_add_watch",
+        "inotify_rm_watch"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Capability Operations \u2500\u2500 capget/capset for capability bounding set queries. prctl(PR_CAP_AMBIENT) for ambient capability clearing.",
+      "names": [
+        "capget",
+        "capset"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 UTS Namespace \u2500\u2500 sethostname used by Docker to set container hostname. Required during container initialization phase only; after that it's unused.",
+      "names": [
+        "sethostname"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Clipboard \u2500\u2500 mremap and mlock2 are the modern versions of mremap/mlock. Included for glibc compatibility on newer kernel versions.",
+      "names": [
+        "mprotect",
+        "mremap",
+        "mlock2",
+        "munlock"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 process_madvise \u2500\u2500 Memory advice for process-level page reclamation. Used by glibc malloc on modern kernels for heap optimization.",
+      "names": [
+        "process_madvise",
+        "process_mrelease"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 pidfd operations \u2500\u2500 Modern glibc uses pidfd_open/pidfd_getfd for child process management. Required by Python subprocess and Docker health checks.",
+      "names": [
+        "pidfd_open",
+        "pidfd_getfd",
+        "pidfd_send_signal"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Filesystem Mutations \u2500\u2500 Required for workspace directory creation (mkdir), file deletion (unlink), renaming, symlinks, and permission changes. The agent creates workspace subdirectories and manages session files. chmod 0o600 is called by crypto_vault on key files.",
+      "names": [
+        "mkdir",
+        "mkdirat",
+        "rmdir",
+        "unlink",
+        "unlinkat",
+        "rename",
+        "renameat",
+        "renameat2",
+        "symlink",
+        "symlinkat",
+        "link",
+        "linkat",
+        "chdir",
+        "chmod",
+        "fchmod",
+        "fchmodat",
+        "umask",
+        "getdents"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 User/Group Identity \u2500\u2500 glibc calls getuid/geteuid/getgid/getegid/getgroups at process startup to initialize thread-local identity caches. Without these, Python crashes with 'failed to get user ID'. These are purely read-only identity queries -- no privilege changes.",
+      "names": [
+        "getuid",
+        "geteuid",
+        "getgid",
+        "getegid",
+        "getgroups",
+        "getresuid",
+        "getresgid"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Process Forking \u2500\u2500 fork/vfork/clone are required by Python's subprocess.run() for shell command execution. wait4/waitid reap child processes. Without fork, ANY shell command (even 'echo hello') crashes the agent.",
+      "names": [
+        "fork",
+        "vfork",
+        "wait4",
+        "waitid"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 glibc Runtime Essentials \u2500\u2500 membarrier() is used by glibc for thread synchronization on modern kernels. eventfd() is an alternative to eventfd2. close_range() efficiently closes fd ranges. umask() controls default file permissions. getdents() is the legacy directory reader.",
+      "names": [
+        "membarrier",
+        "eventfd",
+        "close_range",
+        "sendfile",
+        "copy_file_range",
+        "splice",
+        "tee",
+        "socketpair"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Signal Queue \u2500\u2500 rt_sigqueueinfo/rt_tgsigqueueinfo allow sending signals with additional data. Used by glibc for thread cancellation and some pthreads operations on newer kernels.",
+      "names": [
+        "rt_sigqueueinfo",
+        "rt_tgsigqueueinfo"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 AIO \u2500\u2500 Async I/O used by some database and storage libraries. Included for future-proofing -- not currently used by Ollama but may be needed for vector database operations.",
+      "names": [
+        "io_setup",
+        "io_destroy",
+        "io_submit",
+        "io_cancel",
+        "io_getevents",
+        "io_pgetevents"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 io_uring \u2500\u2500 Modern Linux async I/O interface. Used by Python 3.12+ and some networking libraries for high-performance I/O. Included for future compatibility.",
+      "names": [
+        "io_uring_setup",
+        "io_uring_enter",
+        "io_uring_register"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Resource Limits \u2500\u2500 setrlimit() and prlimit64() allow querying and setting resource limits. The agent queries limits before loading large models to check available memory. Only lower limits can be set (can never exceed Docker's limits).",
+      "names": [
+        "setrlimit"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Timestamp Updates \u2500\u2500 utimensat/futimesat update file timestamps. Used by Python's pathlib and shutil when writing files.",
+      "names": [
+        "utimensat",
+        "futimesat"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Namespace Operations \u2500\u2500 setns() allows joining an existing namespace. Used by Docker runtime during container initialization.",
+      "names": [
+        "setns"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 seccomp Self-Reference \u2500\u2500 seccomp() syscall is needed by child processes that inherit the seccomp filter. Without it, fork+exec fails because the child cannot query or modify its own seccomp state.",
+      "names": [
+        "seccomp"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Landlock \u2500\u2500 Linux Landlock is a modern unprivileged access control mechanism. Programs that use Landlock to self-restrict (e.g., Python sandboxing) need these syscalls.",
+      "names": [
+        "landlock_create_ruleset",
+        "landlock_add_rule",
+        "landlock_restrict_self"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "comment": "\u2500\u2500 Ownership (Non-privileged) \u2500\u2500 chown/fchown/fchownat are included because some Python file operations call them for no-op ownership checks. With CAP_CHOWN dropped, these syscalls always fail with EPERM -- they're allowed at the seccomp layer but blocked at the capability layer. This is defense in depth.",
+      "names": [
+        "chown",
+        "fchown",
+        "fchownat"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    }
+  ]
+}

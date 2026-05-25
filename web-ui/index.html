@@ -1,0 +1,1432 @@
+<!--
+Copyright (c) 2026 Andrzej Dobosz. All rights reserved.
+Priority Date: 2026-05-18
+License: MIT -- see LICENSE file
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="parapet-token" content="__parapet_AUTH_TOKEN__">
+<title>parapet Windows — Ollama</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --dim: #8b949e;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --yellow: #d2991d;
+  --red: #f85149;
+  --purple: #bc8cff;
+  --code-bg: #1c2128;
+  --radius: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+}
+
+/* Header */
+#header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; flex-wrap: wrap;
+}
+#header .logo { font-weight: 700; font-size: 15px; color: var(--accent); white-space: nowrap; }
+#header select, #header button, #header input {
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 4px 10px; font-size: 12px; cursor: pointer;
+}
+#header button:hover { background: var(--border); }
+#header button.active { background: var(--accent); color: #000; border-color: var(--accent); }
+#header .spacer { flex: 1; }
+#header .info { font-size: 11px; color: var(--dim); }
+#header .info.warn { color: var(--yellow); }
+#ws-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+#ws-dot.on { background: var(--green); }
+
+/* Stats bar */
+.stats { font-size: 11px; color: var(--dim); display: inline-flex; align-items: center; gap: 6px;
+  background: var(--code-bg); border-radius: var(--radius); padding: 3px 10px; font-family: 'JetBrains Mono', 'Consolas', monospace; }
+.stats .stat-sep { color: var(--border); }
+#stat-vram.warn { color: var(--yellow); }
+#stat-vram.hot { color: var(--red); }
+
+/* Browse dropdown */
+.browse-dropdown {
+  display: none; position: absolute; top: 100%; left: 0; margin-top: 4px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  min-width: 280px; max-height: 320px; overflow-y: auto; z-index: 150;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5); font-size: 12px;
+}
+.browse-dropdown.show { display: block; }
+.browse-dropdown .browse-item {
+  padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.browse-dropdown .browse-item:hover { background: var(--border); }
+.browse-dropdown .browse-item .icon { font-size: 14px; }
+.browse-dropdown .browse-back { color: var(--accent); font-weight: 600; }
+
+/* Main chat area */
+#main {
+  flex: 1; overflow-y: auto; padding: 16px;
+  max-width: 860px; width: 100%; margin: 0 auto;
+}
+#main:empty::after {
+  content: 'parapet Windows — Ollama — type a prompt or /help for commands';
+  color: var(--dim); font-size: 14px;
+  display: flex; justify-content: center; padding-top: 40vh;
+}
+
+/* Message blocks */
+.block { margin-bottom: 12px; }
+.block .label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  margin-bottom: 4px; letter-spacing: 0.5px;
+}
+.block .body { font-size: 13px; line-height: 1.55; }
+.block.user .label { color: var(--accent); }
+.block.user .body { white-space: pre-wrap; }
+.block.response .label { color: var(--green); }
+.block.error .label { color: var(--red); }
+.block.error .body { color: var(--red); }
+.block.thinking { cursor: pointer; }
+.block.thinking .label { color: var(--dim); }
+.block.thinking .body { color: var(--dim); font-style: italic; font-size: 12px; display: none; }
+.block.thinking.open .body { display: block; }
+.block.tool .label { color: var(--yellow); cursor: pointer; }
+.block.tool .detail { display: none; background: var(--code-bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 12px; margin-top: 4px; font-size: 12px;
+
+/* Rich tool results (FIX #6) */
+.result-files { background: #1a2a1a; border-left: 3px solid var(--green); padding: 8px 12px;
+  border-radius: 0 var(--radius) var(--radius) 0; font-family: monospace; font-size: 12px; }
+.result-error { background: #2a1a1a; border-left: 3px solid var(--red); padding: 8px 12px;
+  border-radius: 0 var(--radius) var(--radius) 0; }
+pre.code-block { background: var(--code-bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 14px; overflow-x: auto;
+  font-size: 12px; line-height: 1.5; }
+pre.code-block code { background: none; padding: 0; font-size: inherit; }
+.result-meta { font-size: 11px; color: var(--dim); margin-top: 6px; padding-top: 4px;
+  border-top: 1px solid var(--border); }
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  white-space: pre-wrap; overflow-x: auto; max-height: 200px; overflow-y: auto; }
+.block.tool.open .detail { display: block; }
+.block.result-meta { font-size: 11px; color: var(--dim); margin-top: -6px; margin-bottom: 16px; }
+.spinner { display: inline-block; animation: spin 1s linear infinite; margin-right: 4px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Code formatting */
+.body code { font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+.body pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 14px; overflow-x: auto; margin: 6px 0; font-size: 12px; }
+.body pre code { background: none; padding: 0; }
+
+/* Footer / Input */
+#footer {
+  padding: 10px 16px 14px; background: var(--surface); border-top: 1px solid var(--border);
+  flex-shrink: 0; max-width: 860px; width: 100%; margin: 0 auto;
+}
+#input-wrap { display: flex; gap: 8px; align-items: flex-end; position: relative; }
+#prompt {
+  flex: 1; resize: none; min-height: 36px; max-height: 120px;
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 12px; font-size: 13px; font-family: inherit;
+  line-height: 1.4;
+}
+#prompt:focus { outline: none; border-color: var(--accent); }
+#send-btn {
+  background: var(--accent); color: #000; border: none; border-radius: var(--radius);
+  padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+#send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Slash command dropdown */
+#cmd-dropdown {
+  display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 4px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  min-width: 280px; max-height: 300px; overflow-y: auto; z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+#cmd-dropdown.show { display: block; }
+#cmd-dropdown .cmd-item {
+  padding: 7px 12px; font-size: 12px; cursor: pointer; display: flex; justify-content: space-between;
+}
+#cmd-dropdown .cmd-item:hover, #cmd-dropdown .cmd-item.sel { background: var(--border); }
+#cmd-dropdown .cmd-item .cmd-name { font-weight: 600; color: var(--accent); }
+#cmd-dropdown .cmd-item .cmd-desc { color: var(--dim); font-size: 11px; }
+#cmd-dropdown .cmd-section { font-size: 10px; color: var(--dim); padding: 6px 12px 2px;
+  text-transform: uppercase; letter-spacing: 1px; }
+
+/* Help overlay */
+#help-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200;
+  justify-content: center; align-items: center;
+}
+#help-overlay.show { display: flex; }
+#help-box {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 20px 24px; max-width: 480px; width: 90%; max-height: 80vh; overflow-y: auto;
+}
+#help-box h2 { font-size: 16px; margin-bottom: 12px; color: var(--accent); }
+#help-box .cmd { margin-bottom: 6px; font-size: 13px; }
+#help-box .cmd strong { color: var(--accent); font-family: monospace; }
+#help-box .cmd span { color: var(--dim); font-size: 12px; margin-left: 8px; }
+#help-box button { margin-top: 12px; background: var(--accent); color: #000; border: none;
+  border-radius: var(--radius); padding: 6px 16px; cursor: pointer; font-weight: 600; }
+
+/* Confirmation modal */
+#confirm-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200;
+  justify-content: center; align-items: center;
+}
+#confirm-overlay.show { display: flex; }
+#confirm-box {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 20px 24px; max-width: 520px; width: 90%;
+}
+#confirm-box h3 { font-size: 14px; color: var(--yellow); margin-bottom: 8px; }
+#confirm-box .tool-name { font-weight: 700; }
+#confirm-box pre { background: var(--code-bg); padding: 10px; border-radius: var(--radius);
+  font-size: 12px; overflow-x: auto; max-height: 200px; overflow-y: auto; margin: 8px 0; }
+#confirm-box .btns { display: flex; gap: 8px; margin-top: 12px; }
+#confirm-box .btns button { flex: 1; padding: 8px; border-radius: var(--radius); border: none;
+  font-weight: 600; cursor: pointer; font-size: 13px; }
+#confirm-box .deny { background: var(--border); color: var(--text); }
+#confirm-box .approve { background: var(--accent); color: #000; }
+
+/* Status bar */
+#status-bar { font-size: 11px; color: var(--dim); padding: 4px 16px; text-align: center;
+  background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
+
+/* SSDLC Dashboard */
+#ssdlc-panel {
+  display: none; flex-shrink: 0; background: var(--surface);
+  border-bottom: 1px solid var(--border); padding: 12px 16px;
+  max-height: 320px; overflow-y: auto;
+}
+#ssdlc-panel.show { display: block; }
+#ssdlc-panel h3 { font-size: 13px; margin-bottom: 8px; color: var(--purple); }
+.ssdlc-phase-row {
+  display: flex; align-items: center; gap: 8px; padding: 4px 0;
+  font-size: 12px; border-bottom: 1px solid var(--border);
+}
+.ssdlc-phase-row:last-child { border-bottom: none; }
+.ssdlc-phase-icon { width: 18px; text-align: center; flex-shrink: 0; }
+.ssdlc-phase-label { width: 110px; flex-shrink: 0; font-weight: 600; }
+.ssdlc-phase-bar {
+  flex: 1; height: 6px; background: var(--code-bg); border-radius: 3px; overflow: hidden;
+}
+.ssdlc-phase-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.ssdlc-phase-bar-fill.done { background: var(--green); }
+.ssdlc-phase-bar-fill.active { background: var(--accent); }
+.ssdlc-phase-bar-fill.pending { background: var(--border); }
+.ssdlc-phase-pct { width: 40px; text-align: right; font-size: 11px; color: var(--dim); flex-shrink: 0; }
+.ssdlc-phase-risks { width: 60px; text-align: right; font-size: 10px; color: var(--dim); flex-shrink: 0; }
+.ssdlc-summary { font-size: 11px; color: var(--dim); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <span class="logo">&#9889; parapet Windows — Ollama</span>
+  <select id="model-select" onchange="switchModel(this.value)" title="Switch model">
+    <option value="">loading...</option>
+  </select>
+  <select id="session-select" onchange="switchSession(this.value)" title="Switch session">
+    <option value="">-- new --</option>
+  </select>
+  <span class="stats" id="stats-bar" title="VRAM / Tokens / GPU">
+    <span id="stat-model">--</span>
+    <span class="stat-sep">|</span>
+    <span id="stat-vram">VRAM --</span>
+    <span class="stat-sep">|</span>
+    <span id="stat-tokens">&#8593;0 &#8595;0</span>
+  </span>
+  <span class="spacer"></span>
+  <span style="position:relative;display:inline-flex;align-items:center;gap:2px">
+    <input id="workdir" placeholder="workspace subdir" size="14" title="Working directory within workspace">
+    <button id="browse-btn" onclick="toggleBrowse()" title="Browse workspace folders" style="padding:4px 6px;font-size:14px">📁</button>
+    <div id="browse-dropdown" class="browse-dropdown"></div>
+  </span>
+  <button id="auto-btn" onclick="toggleAuto()" title="Auto-approve dangerous tools">auto: off</button>
+  <button onclick="showHelp()" title="Slash commands">/help</button>
+  <button onclick="newSession()" title="New session">+new</button>
+  <button onclick="clearView()" title="Clear chat display">clear</button>
+	  <button onclick="hardReload()" title="Clear cache & reload — fixes stale auth token">&#x26A1;reload</button>
+  <button onclick="toggleSSDLC()" title="SSDLC Dashboard" style="color:var(--purple)">SSDLC</button>
+  <span id="ws-dot" title="Agent connection"></span>
+</div>
+
+<div id="ssdlc-panel">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+    <h3 style="margin:0">SSDLC Dashboard</h3>
+    <select id="ssdlc-project-select" onchange="loadSSDLCStatus()" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:2px 8px;font-size:11px">
+      <option value="default">default</option>
+    </select>
+    <span class="spacer"></span>
+    <span id="ssdlc-overall" style="font-size:11px;color:var(--dim)"></span>
+  </div>
+  <div id="ssdlc-phases"></div>
+  <div id="ssdlc-summary" class="ssdlc-summary"></div>
+</div>
+
+<div id="main"></div>
+
+<div id="status-bar">Ready. Type /help for commands.</div>
+
+<div id="footer">
+  <div id="input-wrap">
+    <div id="cmd-dropdown"></div>
+    <textarea id="prompt" rows="1" placeholder="Type a prompt or / for commands... (Enter=send, Shift+Enter=newline)"
+      onkeydown="onInputKey(event)" oninput="onInputChange()" onblur="hideCommands()"></textarea>
+    <button id="send-btn" onclick="send()">Send</button>
+  </div>
+</div>
+
+<!-- Help overlay -->
+<div id="help-overlay" onclick="if(event.target===this) hideHelp()">
+  <div id="help-box">
+    <h2>Slash Commands</h2>
+    <div class="cmd"><strong>/help</strong> <span>Show this help</span></div>
+    <div class="cmd"><strong>/clear</strong> <span>Clear chat display</span></div>
+    <div class="cmd"><strong>/new</strong> <span>Create a new session</span></div>
+    <div class="cmd"><strong>/sessions</strong> <span>List saved sessions</span></div>
+    <div class="cmd"><strong>/session &lt;id&gt;</strong> <span>Switch to session</span></div>
+    <div class="cmd"><strong>/model &lt;name&gt;</strong> <span>Set model (pro/flash)</span></div>
+    <div class="cmd"><strong>/cd &lt;dir&gt;</strong> <span>Change working directory</span></div>
+    <div class="cmd"><strong>/workspace &lt;dir&gt;</strong> <span>Same as /cd</span></div>
+    <div class="cmd"><strong>/thinking on|off</strong> <span>Toggle reasoning mode</span></div>
+    <div class="cmd"><strong>/search on|off &lt;query&gt;</strong> <span>Internet search (one-shot with query)</span></div>
+    <div class="cmd"><strong>/searchengine &lt;name&gt;</strong> <span>Set search engine (duckduckgo, searxng, brave, startpage)</span></div>
+    <div class="cmd"><strong>/auto-approve on|off</strong> <span>Auto-approve tools</span></div>
+    <div class="cmd"><strong>/status</strong> <span>Show current config</span></div>
+    <button onclick="hideHelp()">Close</button>
+  </div>
+</div>
+
+<!-- Confirmation modal -->
+<div id="confirm-overlay">
+  <div id="confirm-box">
+    <h3>&#9888; Tool Confirmation Required</h3>
+    <div>Tool: <span class="tool-name" id="confirm-tool"></span></div>
+    <pre id="confirm-detail"></pre>
+    <div class="btns">
+      <button class="deny" onclick="approve(false)">Deny (Esc)</button>
+      <button class="approve" onclick="approve(true)">Approve</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+const STATE = {
+  sessionId: '',
+  currentTaskId: '',
+  currentStream: null,
+  model: '',  // loaded from /api/current-model — locked at launch
+  thinkingMode: localStorage.getItem('parapet_thinking') || '',
+  autoApprove: false,
+  internetSearch: localStorage.getItem('parapet_search') === 'on',
+  oneShotSearch: false,
+  searchEngine: localStorage.getItem('parapet_searchengine') || 'duckduckgo',
+  ws: null,
+  wsReconnectTimer: null,
+  pendingConfirm: null,
+  authToken: localStorage.getItem('parapet_auth_token') || '',
+};
+
+// ── Auth token helper ────────────────────────────────────────────────────
+async function initAuth() {
+  // Token injected server-side into HTML — no API call needed, no deadlock
+  const meta = document.querySelector('meta[name="parapet-token"]');
+  if (meta && meta.content && meta.content !== '__parapet_AUTH_TOKEN__') {
+    STATE.authToken = meta.content;
+    localStorage.setItem('parapet_auth_token', meta.content);
+  }
+  if (STATE.authToken) return STATE.authToken;
+  // Fallback: fetch from API (only if token was not injected)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch('/api/auth-token');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      STATE.authToken = data.token;
+      localStorage.setItem('parapet_auth_token', data.token);
+      return data.token;
+    } catch (e) {
+      if (attempt < 1) {
+        await new Promise(r => setTimeout(r, 1000));
+      } else {
+        console.warn('Auth token not available — API calls requiring auth will fail');
+      }
+    }
+  }
+  return '';
+}
+
+function authHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  if (STATE.authToken) headers['Authorization'] = `Bearer ${STATE.authToken}`;
+  return headers;
+}
+
+const CMDS = [
+  { name: '/help', desc: 'Show available commands', section: 'General' },
+  { name: '/clear', desc: 'Clear chat display', section: 'General' },
+  { name: '/new', desc: 'Create a new session', section: 'Sessions' },
+  { name: '/sessions', desc: 'List saved sessions', section: 'Sessions' },
+  { name: '/session', desc: 'Switch to session by ID', section: 'Sessions' },
+  { name: '/model', desc: 'Set model (pro, flash, or full name)', section: 'Config' },
+  { name: '/workspace', desc: 'Set working directory', section: 'Config' },
+  { name: '/thinking', desc: 'Toggle thinking mode on/off', section: 'Config' },
+  { name: '/search', desc: 'Internet search: on, off, or on <query> (one-shot)', section: 'Config' },
+  { name: '/searchengine', desc: 'Set search engine (duckduckgo, searxng, brave, startpage)', section: 'Config' },
+  { name: '/auto-approve', desc: 'Toggle auto-approve on/off', section: 'Config' },
+  { name: '/status', desc: 'Show current config', section: 'General' },
+];
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+const $ = (s) => document.querySelector(s);
+const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+
+function formatContent(text) {
+  if (!text) return '';
+  let out = esc(text);
+  // Fenced code blocks
+  out = out.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) =>
+    `<pre class="code-block"><code>${esc(code.trim())}</code></pre>`);
+  // Inline code
+  out = out.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Bold
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // File listings: lines starting with spaces + filename/
+  if (out.match(/^  [^\s]+\//m)) {
+    out = '<div class="result-files">' + out + '</div>';
+  }
+  // Error detection
+  if (/error|failed|traceback/i.test(out.substring(0, 200))) {
+    out = '<div class="result-error">' + out + '</div>';
+  }
+  return out;
+}
+
+// ── Blocks ────────────────────────────────────────────────────────────────
+function addBlock(type, label) {
+  const d = document.createElement('div');
+  d.className = `block ${type}`;
+  d.innerHTML = `<div class="label">${label}</div><div class="body"></div>`;
+  $('#main').appendChild(d);
+  scrollDown();
+  return d;
+}
+
+function getLastBlock(type) {
+  const blocks = $('#main').querySelectorAll(`.block.${type}`);
+  return blocks[blocks.length - 1];
+}
+
+function scrollDown() {
+  const m = $('#main');
+  m.scrollTop = m.scrollHeight;
+}
+
+function setStatus(msg) {
+  $('#status-bar').textContent = msg;
+}
+
+// ── WebSocket ────────────────────────────────────────────────────────────
+function connectWS() {
+  if (STATE.ws && STATE.ws.readyState === WebSocket.OPEN) return;
+  STATE.wsReconnectCount = STATE.wsReconnectCount || 0;
+  if (STATE.wsReconnectCount >= 5) {
+    setStatus('WebSocket unavailable — agent may be down');
+    return;
+  }
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const tokenParam = STATE.authToken ? `?token=${encodeURIComponent(STATE.authToken)}` : '';
+  const ws = new WebSocket(`${proto}://${location.host}/ws${tokenParam}`);
+  STATE.ws = ws;
+  ws.onopen = () => {
+    $('#ws-dot').classList.add('on');
+    STATE.wsReconnectCount = 0;
+    if (STATE.wsReconnectTimer) { clearTimeout(STATE.wsReconnectTimer); STATE.wsReconnectTimer = null; }
+    setStatus('Connected to agent');
+  };
+  ws.onerror = () => {
+    // onclose will fire after this — let it handle reconnect
+  };
+  ws.onclose = () => {
+    $('#ws-dot').classList.remove('on');
+    STATE.wsReconnectCount++;
+    const delay = Math.min(2000 * STATE.wsReconnectCount, 15000);
+    setStatus(`Disconnected — retry ${STATE.wsReconnectCount}/5 in ${delay/1000}s`);
+    STATE.wsReconnectTimer = setTimeout(connectWS, delay);
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'confirm' && msg.data) {
+      handleConfirm(msg.data, msg.task_id);
+    }
+    if (msg.type === 'result' && msg.result) {
+      handleResult(msg.result);
+    }
+  };
+}
+
+// ── Send & Stream ───────────────────────────────────────────────────────
+async function send() {
+  const promptEl = $('#prompt');
+  const prompt = promptEl.value.trim();
+  if (!prompt) return;
+
+  // Check for slash commands
+  if (prompt.startsWith('/')) {
+    handleCommand(prompt);
+    promptEl.value = '';
+    promptEl.style.height = 'auto';
+    return;
+  }
+
+  if (STATE.currentTaskId) { setStatus('Busy — wait for current task'); return; }
+
+  // Disable send
+  $('#send-btn').disabled = true;
+  promptEl.value = '';
+  promptEl.style.height = 'auto';
+
+  const workdir = $('#workdir').value.trim();
+
+  // Add user block
+  addBlock('user', 'you').querySelector('.body').textContent = prompt;
+
+  // Add spinner
+  const spinBlock = addBlock('thinking', '...');
+  spinBlock.querySelector('.body').innerHTML = '<span class="spinner">&#9696;</span> Thinking...';
+  spinBlock.querySelector('.body').style.display = 'block';
+
+  try {
+    // Prepend system instructions for internet/search mode
+    let finalPrompt = prompt;
+    if (!STATE.internetSearch) {
+      finalPrompt = '[SYSTEM: You are in OFFLINE mode. Do NOT attempt to access the internet, make HTTP requests, use curl, or fetch external URLs. Work only with local files.]\n' + prompt;
+    } else {
+      const engine = STATE.searchEngine || 'duckduckgo';
+      finalPrompt = `[SYSTEM: Internet access is ALLOWED. For web searches, use ONLY ${engine}. Do NOT use Google, Bing, or any tracking search engine. Query via: curl -s "https://lite.duckduckgo.com/lite/?q=URLENCODED_QUERY"]\n` + prompt;
+    }
+
+    // Submit task
+    const body = { prompt: finalPrompt, session_id: STATE.sessionId };
+    if (workdir) body.workdir = workdir;
+    if (STATE.thinkingMode) body.thinking_mode = STATE.thinkingMode;
+
+    const res = await fetch('/api/send', {
+      method: 'POST', headers: authHeaders(), body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      // Auto-heal 403: clear stale token, refetch, retry once
+      if (res.status === 403 && !body._retried) {
+        console.warn('Auth token rejected — clearing and refetching...');
+        localStorage.removeItem('parapet_auth_token');
+        STATE.authToken = '';
+        await initAuth();
+        if (STATE.authToken) {
+          body._retried = true;
+          const retryRes = await fetch('/api/send', {
+            method: 'POST', headers: authHeaders(), body: JSON.stringify(body),
+          });
+          if (retryRes.ok) {
+            const data = await retryRes.json();
+            STATE.currentTaskId = data.task_id;
+            if (data.session_id) STATE.sessionId = data.session_id;
+            if (STATE.ws && STATE.ws.readyState === WebSocket.OPEN) {
+              STATE.ws.send(JSON.stringify({ type: 'subscribe', task_id: data.task_id }));
+            }
+            const streamUrl = `/api/stream/${data.task_id}`;
+            STATE.currentStream = new EventSource(streamUrl);
+            STATE.currentStream.addEventListener('log', (e) => {
+              const entry = JSON.parse(e.data);
+              if (entry.event === 'model_response') {
+                spinBlock.remove();
+                const block = addBlock('llm', 'model');
+                block.querySelector('.body').innerHTML = formatContent(entry.detail.text || '');
+              }
+            });
+            STATE.currentStream.addEventListener('done', () => {
+              $('#send-btn').disabled = false;
+              setStatus('Done');
+            });
+            STATE.currentStream.addEventListener('error', () => {
+              $('#send-btn').disabled = false;
+            });
+            return;
+          }
+          // Retry failed — fall through to show error
+          res = retryRes;
+        }
+      }
+      spinBlock.remove();
+      const errData = await res.json().catch(() => ({}));
+      const msg = errData.detail || `Server error (${res.status})`;
+      addBlock('error', 'error').querySelector('.body').textContent = msg;
+      setStatus(`Error: ${msg}`);
+      $('#send-btn').disabled = false;
+      return;
+    }
+    const data = await res.json();
+    STATE.currentTaskId = data.task_id;
+    if (data.session_id) STATE.sessionId = data.session_id;
+
+    // Subscribe via WebSocket
+    if (STATE.ws && STATE.ws.readyState === WebSocket.OPEN) {
+      STATE.ws.send(JSON.stringify({ type: 'subscribe', task_id: data.task_id }));
+    }
+
+    // Open SSE stream
+    const streamUrl = `/api/stream/${data.task_id}`;
+    STATE.currentStream = new EventSource(streamUrl);
+
+    STATE.currentStream.addEventListener('log', (e) => {
+      const entry = JSON.parse(e.data);
+      handleLogEvent(entry);
+      spinBlock.remove();
+    });
+
+    STATE.currentStream.addEventListener('confirm', (e) => {
+      const data = JSON.parse(e.data);
+      handleConfirm(data, STATE.currentTaskId);
+    });
+
+    STATE.currentStream.addEventListener('result', (e) => {
+      const result = JSON.parse(e.data);
+      handleResult(result);
+    });
+
+    STATE.currentStream.addEventListener('timeout', () => {
+      closeStream();
+      addBlock('error', 'error').querySelector('.body').textContent = 'Task timed out after 10 minutes.';
+      setStatus('Task timed out');
+      $('#send-btn').disabled = false;
+    });
+
+    STATE.currentStream.addEventListener('error', () => {
+      closeStream();
+      setStatus('Stream error');
+      $('#send-btn').disabled = false;
+    });
+
+  } catch (err) {
+    spinBlock.remove();
+    addBlock('error', 'error').querySelector('.body').textContent = `Send failed: ${err.message}`;
+    $('#send-btn').disabled = false;
+  }
+}
+
+function handleLogEvent(entry) {
+  const event = entry.event;
+  setStatus(event.replace(/_/g, ' '));
+
+  if (event === 'thinking') {
+    let block = getLastBlock('thinking');
+    if (!block) block = addBlock('thinking', 'reasoning');
+    const thought = (entry.detail && entry.detail.thought) || '';
+    const body = block.querySelector('.body');
+    body.textContent = thought;
+    body.style.display = 'block';
+    return;
+  }
+
+  if (event === 'tool_call_start') {
+    const tool = entry.tool || 'tool';
+    const block = addBlock('tool', `&#128736; ${tool}`);
+    block.open = true;
+    block.classList.add('open');
+    const detail = block.querySelector('.detail');
+    const args = entry.detail && entry.detail.args ? JSON.stringify(entry.detail.args, null, 2) : '';
+    detail.textContent = args;
+    block.querySelector('.label').onclick = () => {
+      block.classList.toggle('open');
+    };
+    return;
+  }
+
+  if (event === 'tool_call_end') {
+    const blocks = $('#main').querySelectorAll('.block.tool');
+    const block = blocks[blocks.length - 1];
+    if (block) {
+      const detail = block.querySelector('.detail');
+      const isErr = entry.detail && entry.detail.is_error;
+      if (isErr) {
+        block.querySelector('.label').style.color = 'var(--red)';
+      }
+    }
+    return;
+  }
+
+  if (event === 'model_response') {
+    let block = getLastBlock('response');
+    if (!block) block = addBlock('response', 'parapet');
+    const text = (entry.detail && entry.detail.text) || '';
+    const body = block.querySelector('.body');
+    body.innerHTML = formatContent(text);
+    scrollDown();
+    return;
+  }
+
+  if (event === 'task_error') {
+    const err = (entry.detail && entry.detail.error) || 'Unknown error';
+    addBlock('error', 'error').querySelector('.body').textContent = err;
+  }
+}
+
+function handleConfirm(data, taskId) {
+  STATE.pendingConfirm = { data, taskId };
+  if (STATE.autoApprove) {
+    approve(true);
+    return;
+  }
+  $('#confirm-tool').textContent = data.tool || 'unknown';
+  $('#confirm-detail').textContent = JSON.stringify(data.args || {}, null, 2);
+  $('#confirm-overlay').classList.add('show');
+}
+
+function handleResult(result) {
+  closeStream();
+
+  if (result.status === 'complete') {
+    let block = getLastBlock('response');
+    if (!block) block = addBlock('response', 'parapet');
+    block.querySelector('.body').innerHTML = formatContent(result.response || '');
+
+    // Meta info
+    if (result.model || result.usage) {
+      const meta = document.createElement('div');
+      meta.className = 'block result-meta';
+      let txt = '';
+      if (result.model) txt += `model: ${result.model}  `;
+      if (result.usage) txt += `&#8593;${result.usage.input_tokens || 0} &#8595;${result.usage.output_tokens || 0}`;
+      meta.innerHTML = txt;
+      block.appendChild(meta);
+    }
+
+    // Save exchange
+    const promptBlocks = $('#main').querySelectorAll('.block.user .body');
+    const lastUser = promptBlocks[promptBlocks.length - 1];
+    if (lastUser && STATE.sessionId) {
+      fetch('/api/save-exchange', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({
+          session_id: STATE.sessionId,
+          user: lastUser.textContent,
+          assistant: result.response || '',
+          model: result.model || '',
+          task_id: result.task_id || '',
+        }),
+      }).then(() => loadSessions()).catch(() => {});
+    }
+
+    setStatus('Complete');
+  } else if (result.status === 'error') {
+    addBlock('error', 'error').querySelector('.body').textContent = result.error || 'Unknown error';
+    setStatus('Error');
+  }
+
+  // Auto-reset internet if this was a one-shot search
+  if (STATE.oneShotSearch) {
+    STATE.internetSearch = false;
+    STATE.oneShotSearch = false;
+    setStatus('Internet: BLOCKED (auto-locked after one-shot search)');
+  }
+
+  STATE.currentTaskId = '';
+  $('#send-btn').disabled = false;
+}
+
+function closeStream() {
+  if (STATE.currentStream) {
+    STATE.currentStream.close();
+    STATE.currentStream = null;
+  }
+}
+
+// ── Confirmation ────────────────────────────────────────────────────────
+async function approve(ok) {
+  $('#confirm-overlay').classList.remove('show');
+  const pending = STATE.pendingConfirm;
+  STATE.pendingConfirm = null;
+
+  if (pending && pending.taskId) {
+    try {
+      const res = await fetch('/api/approve', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ task_id: pending.taskId, approved: ok }),
+      });
+      if (!res.ok) {
+        setStatus(`Approval failed: ${res.status} — try /auto-approve on`);
+        return;
+      }
+    } catch (e) {
+      setStatus('Approval failed (network) — click Approve again');
+    }
+  }
+}
+
+// ── Slash Commands ──────────────────────────────────────────────────────
+function handleCommand(cmd) {
+  const parts = cmd.trim().split(/\s+/);
+  const name = parts[0].toLowerCase();
+  const arg = parts.slice(1).join(' ');
+
+  switch (name) {
+    case '/help':
+      showHelp();
+      break;
+    case '/clear':
+      clearView();
+      break;
+    case '/new':
+      newSession();
+      break;
+    case '/sessions':
+      listSessionsCmd();
+      break;
+    case '/session':
+      if (arg) switchSession(arg);
+      else setStatus('Usage: /session <id>');
+      break;
+    case '/model':
+      setModel(arg);
+      break;
+    case '/workspace':
+    case '/cd':
+      $('#workdir').value = arg;
+      setStatus(`Workspace subdirectory set to: ${arg || '(root)'}`);
+      break;
+    case '/thinking':
+      if (arg === 'on') { STATE.thinkingMode = 'enabled'; localStorage.setItem('parapet_thinking', 'enabled'); }
+      else if (arg === 'off') { STATE.thinkingMode = 'disabled'; localStorage.setItem('parapet_thinking', 'disabled'); }
+      else { STATE.thinkingMode = STATE.thinkingMode === 'enabled' ? 'disabled' : 'enabled'; localStorage.setItem('parapet_thinking', STATE.thinkingMode); }
+      setStatus(`Thinking mode: ${STATE.thinkingMode || 'default'}`);
+      break;
+    case '/search':
+      if (arg.startsWith('on ')) {
+        // One-shot: /search on <query> — internet allowed for this query only
+        const query = arg.substring(3).trim();
+        STATE.internetSearch = true;
+        STATE.oneShotSearch = true;
+        setStatus('🔍 Internet: ALLOWED for this search (auto-lock after)');
+        $('#prompt').value = query;
+        send();
+      } else if (arg === 'on') {
+        STATE.internetSearch = true; localStorage.setItem('parapet_search', 'on');
+        setStatus('Internet search: ALLOWED (use /search off to block)');
+      } else if (arg === 'off') {
+        STATE.internetSearch = false; localStorage.setItem('parapet_search', 'off');
+        setStatus('Internet search: BLOCKED (offline mode)');
+      } else {
+        STATE.internetSearch = !STATE.internetSearch;
+        localStorage.setItem('parapet_search', STATE.internetSearch ? 'on' : 'off');
+        setStatus(`Internet search: ${STATE.internetSearch ? 'ALLOWED' : 'BLOCKED'}`);
+      }
+      break;
+    case '/auto-approve':
+      if (arg === 'on') STATE.autoApprove = true;
+      else if (arg === 'off') STATE.autoApprove = false;
+      else STATE.autoApprove = !STATE.autoApprove;
+      updateAutoBtn();
+      setStatus(`Auto-approve: ${STATE.autoApprove ? 'ON' : 'OFF'}`);
+      break;
+    case '/searchengine':
+      const engines = ['duckduckgo', 'searxng', 'brave', 'startpage'];
+      if (engines.includes(arg)) {
+        STATE.searchEngine = arg;
+        localStorage.setItem('parapet_searchengine', arg);
+        setStatus(`Search engine: ${arg}`);
+      } else {
+        setStatus(`Available engines: ${engines.join(', ')}. Current: ${STATE.searchEngine}`);
+      }
+      break;
+    case '/status':
+      showStatus();
+      break;
+    default:
+      setStatus(`Unknown command: ${name}. Type /help for available commands.`);
+  }
+}
+
+function showHelp() {
+  $('#help-overlay').classList.add('show');
+}
+function hideHelp() {
+  $('#help-overlay').classList.remove('show');
+}
+
+function listSessionsCmd() {
+  fetch('/api/sessions')
+    .then(r => r.json())
+    .then(data => {
+      const sessions = data.sessions || [];
+      if (sessions.length === 0) {
+        addBlock('response', 'sessions').querySelector('.body').textContent = 'No saved sessions.';
+      } else {
+        const lines = sessions.map(s => `${s.id} — ${s.exchanges} exchanges (${new Date(s.created).toLocaleString()})`).join('\n');
+        addBlock('response', `${sessions.length} session(s)`).querySelector('.body').textContent = lines;
+      }
+      scrollDown();
+    });
+}
+
+async function setModel(arg) {
+  if (!arg) {
+    // No arg — show available models + locked current model
+    try {
+      const curRes = await fetch('/api/current-model');
+      const curData = await curRes.json();
+      const lockedModel = curData.model || 'unknown';
+      const res = await fetch('/api/models');
+      const data = await res.json();
+      const models = data.models || [];
+      if (models.length === 0) {
+        setStatus('No models found in Ollama. Pull one first: ollama pull <model>');
+        return;
+      }
+      const block = addBlock('response', 'model-list');
+      const body = block.querySelector('.body');
+      body.innerHTML = '<strong>Available models:</strong>\n' +
+        models.map(m => `  • ${m.name || m}`).join('\n') +
+        '\n\nCurrent (locked): ${lockedModel}\n' +
+        `Model is set at launch by run.ps1 and cannot be changed mid-session.\n` +
+        `To switch models, stop the stack and re-run: .\\run.ps1 -Model <name>`;
+      scrollDown();
+    } catch (e) {
+      setStatus('Failed to fetch model list from Ollama');
+    }
+    return;
+  }
+  // /model <name> is no longer supported — model is locked at launch
+  setStatus(`Model is locked at launch. Restart with: .\run.ps1 -Model ${arg}`);
+}
+
+function showStatus() {
+  const lines = [
+    `Model (locked): ${STATE.model || 'unknown'}`,
+    `Session: ${STATE.sessionId || 'none'}`,
+    `Workspace: ${$('#workdir').value || '(root)'}`,
+    `Thinking: ${STATE.thinkingMode || 'default (enabled)'}`,
+    `Auto-approve: ${STATE.autoApprove ? 'ON' : 'OFF'}`,
+  ];
+  addBlock('response', 'status').querySelector('.body').textContent = lines.join('\n');
+  scrollDown();
+}
+
+// ── Input & Autocomplete ─────────────────────────────────────────────────
+function onInputKey(e) {
+  const dropdown = $('#cmd-dropdown');
+  const showing = dropdown.classList.contains('show');
+
+  if (showing) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); moveCmdSel(1); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); moveCmdSel(-1); return; }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      const sel = dropdown.querySelector('.cmd-item.sel');
+      if (sel) { e.preventDefault(); selectCmd(sel.dataset.cmd); return; }
+    }
+    if (e.key === 'Escape') { hideCommands(); return; }
+  }
+
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (showing) return;
+    send();
+  }
+}
+
+function onInputChange() {
+  const val = $('#prompt').value;
+  if (val.startsWith('/') && !val.includes(' ')) {
+    // Show matching commands
+    const query = val.toLowerCase();
+    const matches = CMDS.filter(c => c.name.startsWith(query));
+    if (matches.length > 0) {
+      showCommandDropdown(matches);
+      return;
+    }
+  }
+  hideCommands();
+
+  // Auto-resize
+  const el = $('#prompt');
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function showCommandDropdown(matches) {
+  const dropdown = $('#cmd-dropdown');
+  let html = '';
+  let lastSection = '';
+  for (const c of matches) {
+    if (c.section !== lastSection) {
+      html += `<div class="cmd-section">${c.section}</div>`;
+      lastSection = c.section;
+    }
+    html += `<div class="cmd-item" data-cmd="${c.name}" onmousedown="selectCmd('${c.name}')">
+      <span class="cmd-name">${c.name}</span><span class="cmd-desc">${c.desc}</span></div>`;
+  }
+  dropdown.innerHTML = html;
+  dropdown.classList.add('show');
+  // Select first
+  const first = dropdown.querySelector('.cmd-item');
+  if (first) first.classList.add('sel');
+}
+
+function hideCommands() {
+  $('#cmd-dropdown').classList.remove('show');
+}
+
+function moveCmdSel(dir) {
+  const items = $('#cmd-dropdown').querySelectorAll('.cmd-item');
+  if (items.length === 0) return;
+  let idx = Array.from(items).findIndex(i => i.classList.contains('sel'));
+  if (idx >= 0) items[idx].classList.remove('sel');
+  idx = (idx + dir + items.length) % items.length;
+  items[idx].classList.add('sel');
+  items[idx].scrollIntoView({ block: 'nearest' });
+}
+
+function selectCmd(cmd) {
+  $('#prompt').value = cmd + ' ';
+  hideCommands();
+  $('#prompt').focus();
+
+  // If command needs an argument, leave cursor ready
+  const needsArg = ['/session', '/model', '/workspace', '/thinking', '/auto-approve'];
+  // No auto-send for these
+}
+
+// ── Session Management ──────────────────────────────────────────────────
+function loadSessions() {
+  fetch('/api/sessions')
+    .then(r => r.json())
+    .then(data => {
+      const sel = $('#session-select');
+      sel.innerHTML = '<option value="">-- new --</option>';
+      for (const s of (data.sessions || [])) {
+        sel.innerHTML += `<option value="${s.id}">${s.id} (${s.exchanges})</option>`;
+      }
+      if (STATE.sessionId) sel.value = STATE.sessionId;
+      updateSessionInfo();
+    });
+}
+
+function switchSession(id) {
+  if (!id) { newSession(); return; }
+  STATE.sessionId = id;
+  $('#session-select').value = id;
+  $('#main').innerHTML = '';
+  fetch(`/api/sessions/${id}`)
+    .then(r => r.json())
+    .then(data => {
+      for (const m of (data.messages || [])) {
+        if (m.role === 'user') {
+          addBlock('user', 'you').querySelector('.body').textContent = m.content;
+        } else {
+          const content = m.content || '';
+          // Strip metadata suffix
+          const clean = content.replace(/\s*\[model:.*?\]\s*/, '').replace(/\s*\[task:.*?\]\s*$/, '');
+          addBlock('response', 'parapet').querySelector('.body').innerHTML = formatContent(clean);
+        }
+      }
+      updateSessionInfo();
+    });
+}
+
+function newSession() {
+  fetch('/api/sessions', { method: 'POST', headers: authHeaders(), body: '{}' })
+    .then(r => r.json())
+    .then(data => {
+      STATE.sessionId = data.id;
+      $('#session-select').value = data.id;
+      $('#main').innerHTML = '';
+      updateSessionInfo();
+      loadSessions();
+    });
+}
+
+function updateSessionInfo() {
+  const sel = $('#session-select');
+  const opt = sel.selectedOptions[0];
+  const info = $('#session-info');
+  if (opt && opt.text.includes('(')) {
+    info.textContent = opt.text.match(/\((\d+)\)/)?.[1] + ' exchanges';
+    info.className = 'info' + (parseInt(info.textContent) > 25 ? ' warn' : '');
+  } else {
+    info.textContent = '';
+    info.className = 'info';
+  }
+}
+
+function clearView() {
+  $('#main').innerHTML = '';
+  setStatus('View cleared');
+}
+
+function hardReload() {
+  localStorage.removeItem('parapet_auth_token');
+  STATE.authToken = '';
+  location.reload(true);
+}
+
+// ── Folder browser ────────────────────────────────────────────────────────
+let browsePath = '/';
+
+async function toggleBrowse() {
+  const dd = $('#browse-dropdown');
+  if (dd.classList.contains('show')) { dd.classList.remove('show'); return; }
+  await loadBrowse(browsePath);
+  dd.classList.add('show');
+}
+
+async function loadBrowse(path) {
+  browsePath = path;
+  const dd = $('#browse-dropdown');
+  dd.innerHTML = '<div class="browse-item" style="color:var(--dim)">Loading...</div>';
+  try {
+    const res = await fetch(`/api/browse?path=${encodeURIComponent(path)}`);
+    const data = await res.json();
+    let html = '';
+    if (data.current !== '/' && data.parent) {
+      html += `<div class="browse-item browse-back" onclick="loadBrowse('${data.parent}'); event.stopPropagation()">📁 .. (up)</div>`;
+    }
+    html += `<div class="browse-item" style="color:var(--dim);font-size:11px">📂 ${data.current}</div>`;
+    for (const d of (data.dirs || [])) {
+      const sub = path === '/' ? d : `${path}/${d}`;
+      html += `<div class="browse-item" onclick="$('#workdir').value='${sub}';$('#browse-dropdown').classList.remove('show');setStatus('Workspace: ${sub}')">
+        <span class="icon">📁</span> ${d}</div>`;
+    }
+    dd.innerHTML = html;
+  } catch (e) {
+    dd.innerHTML = '<div class="browse-item" style="color:var(--red)">Error loading</div>';
+  }
+}
+
+// Close browse on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#browse-btn') && !e.target.closest('#browse-dropdown')) {
+    $('#browse-dropdown').classList.remove('show');
+  }
+});
+
+// ── Screenshot paste/upload ────────────────────────────────────────────────
+document.addEventListener('paste', async (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const res = await fetch('/api/upload-image', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ image: reader.result }),
+          });
+          const data = await res.json();
+          if (data.ok) {
+            $('#prompt').value += `
+${data.markdown}
+`;
+            setStatus(`Screenshot saved: ${data.path}`);
+          }
+        } catch (err) {
+          setStatus('Screenshot upload failed');
+        }
+      };
+      reader.readAsDataURL(blob);
+      return;
+    }
+  }
+});
+
+// ── Auto-approve ────────────────────────────────────────────────────────
+function toggleAuto() {
+  STATE.autoApprove = !STATE.autoApprove;
+  updateAutoBtn();
+  setStatus(`Auto-approve: ${STATE.autoApprove ? 'ON' : 'OFF'}`);
+}
+function updateAutoBtn() {
+  const btn = $('#auto-btn');
+  btn.textContent = `auto: ${STATE.autoApprove ? 'ON' : 'OFF'}`;
+  btn.classList.toggle('active', STATE.autoApprove);
+}
+
+// ── Keyboard shortcuts ──────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if ($('#help-overlay').classList.contains('show')) hideHelp();
+    else if ($('#confirm-overlay').classList.contains('show')) approve(false);
+    else hideCommands();
+  }
+  // Ctrl+K = clear view
+  if (e.ctrlKey && e.key === 'k') { e.preventDefault(); clearView(); }
+});
+
+// ── Stats polling (VRAM%, tokens, GPU temp) ─────────────────────────────
+async function pollStats() {
+  try {
+    const res = await fetch('/api/stats');
+    const s = await res.json();
+    $('#stat-model').textContent = s.model || '--';
+
+    const vramEl = $('#stat-vram');
+    if (s.vram_used_mb > 0) {
+      vramEl.textContent = `VRAM ${s.vram_used_mb}/${s.vram_total_mb}MB (${s.vram_pct}%)`;
+      vramEl.className = s.vram_pct > 80 ? 'hot' : s.vram_pct > 60 ? 'warn' : '';
+    } else {
+      vramEl.textContent = 'VRAM --';
+      vramEl.className = '';
+    }
+
+    $('#stat-tokens').innerHTML = `&#8593;${(s.tokens_in || 0).toLocaleString()} &#8595;${(s.tokens_out || 0).toLocaleString()}`;
+
+  } catch (e) {}
+}
+
+setInterval(pollStats, 5000);
+pollStats();
+
+// ── Init ────────────────────────────────────────────────────────────────
+(async function() {
+  await initAuth();
+  connectWS();
+  loadSessions();
+
+  // Model is locked at launch by run.ps1 — load from server, never localStorage.
+  try {
+    const curRes = await fetch('/api/current-model');
+    const curData = await curRes.json();
+    STATE.model = curData.model || '';
+    if (curData.model) {
+      const el = document.getElementById('stat-model');
+      if (el) el.textContent = curData.model;
+    }
+  } catch (e) { console.warn('Could not load session model:', e); }
+  if (localStorage.getItem('parapet_thinking')) STATE.thinkingMode = localStorage.getItem('parapet_thinking');
+
+  // Populate model dropdown + load current model
+  await populateModelDropdown();
+
+  // Focus prompt on load
+  $('#prompt').focus();
+})();
+
+async function populateModelDropdown() {
+  const sel = document.getElementById('model-select');
+  if (!sel) return;
+  try {
+    const [modelsRes, curRes] = await Promise.all([
+      fetch('/api/models'),
+      fetch('/api/current-model')
+    ]);
+    const modelsData = await modelsRes.json();
+    const curData = await curRes.json();
+    const models = modelsData.models || [];
+    const current = curData.model || STATE.model || '';
+
+    sel.innerHTML = '';
+    if (models.length === 0) {
+      sel.innerHTML = '<option value="">no models</option>';
+      return;
+    }
+
+    // Group by tier
+    const green = [], yellow = [], red = [], unknown = [];
+    for (const m of models) {
+      if (m.tier === 'green') green.push(m);
+      else if (m.tier === 'yellow') yellow.push(m);
+      else if (m.tier === 'red') red.push(m);
+      else unknown.push(m);
+    }
+
+    function addGroup(label, arr) {
+      if (arr.length === 0) return;
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = label;
+      for (const m of arr) {
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        const toolIcon = m.tools ? '[native]' : '[prompt]';
+        const cat = (m.categories || []).filter(c => c !== 'blocked').slice(0, 2).join('/');
+        opt.textContent = `${m.name}  — ${toolIcon} ${cat} (${m.vram_gb}GB)`;
+        if (m.name === current || m.name.replace(':latest','') === current.replace(':latest','')) {
+          opt.selected = true;
+          STATE.model = m.name;
+        }
+        optgroup.appendChild(opt);
+      }
+      sel.appendChild(optgroup);
+    }
+
+    addGroup('GREEN — comfortable fit', green);
+    addGroup('YELLOW — tight fit (ctx≤2048)', yellow);
+    addGroup('RED — blocked (will spill)', red);
+    addGroup('Unknown', unknown);
+
+    if (!STATE.model && models.length > 0) {
+      STATE.model = models[0].name;
+    }
+
+    // Update stat display
+    const el = document.getElementById('stat-model');
+    if (el) el.textContent = STATE.model || '--';
+
+  } catch (e) {
+    console.warn('Model dropdown load failed:', e);
+  }
+}
+
+// ── SSDLC Dashboard ──────────────────────────────────────────────────
+
+let ssdlcVisible = false;
+
+async function toggleSSDLC() {
+  ssdlcVisible = !ssdlcVisible;
+  const panel = document.getElementById('ssdlc-panel');
+  const btn = event.target;
+  if (ssdlcVisible) {
+    panel.classList.add('show');
+    btn.classList.add('active');
+    await loadSSDLCProjects();
+    await loadSSDLCStatus();
+  } else {
+    panel.classList.remove('show');
+    btn.classList.remove('active');
+  }
+}
+
+async function loadSSDLCProjects() {
+  try {
+    const r = await fetch('/api/ssdlc/projects');
+    const data = await r.json();
+    const sel = document.getElementById('ssdlc-project-select');
+    sel.innerHTML = '';
+    if (data.projects.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = 'default';
+      opt.textContent = 'default (new)';
+      sel.appendChild(opt);
+    } else {
+      for (const p of data.projects) {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        const icon = p.status === 'completed' ? 'OK' : p.status === 'in_progress' ? '>>' : '--';
+        opt.textContent = `[${icon}] ${p.name}`;
+        sel.appendChild(opt);
+      }
+    }
+  } catch (e) {
+    console.warn('SSDLC projects load failed:', e);
+  }
+}
+
+async function loadSSDLCStatus() {
+  const project = document.getElementById('ssdlc-project-select').value || 'default';
+  try {
+    const r = await fetch('/api/ssdlc/status?project=' + encodeURIComponent(project));
+    const data = await r.json();
+    renderSSDLC(data);
+  } catch (e) {
+    console.warn('SSDLC status load failed:', e);
+  }
+}
+
+function renderSSDLC(data) {
+  document.getElementById('ssdlc-overall').textContent =
+    `Overall: ${data.overall_status.replace(/_/g,' ')} — ${data.overall_pct}%`;
+
+  const container = document.getElementById('ssdlc-phases');
+  container.innerHTML = '';
+
+  const ordered = Object.entries(data.phases).sort((a, b) => a[1].order - b[1].order);
+  for (const [key, ps] of ordered) {
+    const icon = ps.status === 'completed' ? 'OK' :
+                 ps.status === 'in_progress' ? '>>' :
+                 ps.status === 'skipped' ? '--' : '  ';
+    const iconColor = ps.status === 'completed' ? 'var(--green)' :
+                      ps.status === 'in_progress' ? 'var(--accent)' : 'var(--dim)';
+
+    const row = document.createElement('div');
+    row.className = 'ssdlc-phase-row';
+    row.innerHTML = `
+      <span class="ssdlc-phase-icon" style="color:${iconColor}">${icon}</span>
+      <span class="ssdlc-phase-label">${ps.label}</span>
+      <div class="ssdlc-phase-bar">
+        <div class="ssdlc-phase-bar-fill ${ps.status === 'completed' ? 'done' : ps.status === 'in_progress' ? 'active' : 'pending'}"
+             style="width:${ps.checklist_pct}%"></div>
+      </div>
+      <span class="ssdlc-phase-pct">${ps.checklist_pct}%</span>
+      <span class="ssdlc-phase-risks">${ps.risks_count} risks</span>
+    `;
+    row.title = `${ps.items_checked}/${ps.items_total} items | ${ps.risks_open} open risks`;
+    row.style.cursor = 'pointer';
+    row.onclick = () => showSSDLCPhaseDetails(key, ps);
+    container.appendChild(row);
+  }
+
+  document.getElementById('ssdlc-summary').textContent =
+    `${data.checked_items}/${data.total_items} checklist items complete · ` +
+    `Updated: ${(data.updated_at || '').slice(0, 16) || 'never'}`;
+}
+
+function showSSDLCPhaseDetails(phaseKey, ps) {
+  // Navigate to the SSDLC report for this phase
+  const project = document.getElementById('ssdlc-project-select').value || 'default';
+  fetch('/api/ssdlc/report/markdown?project=' + encodeURIComponent(project))
+    .then(r => r.text())
+    .then(md => {
+      // Display in chat area as a system message
+      const main = document.getElementById('main');
+      const div = document.createElement('div');
+      div.className = 'block response';
+      div.innerHTML = `<div class="label" style="color:var(--purple)">SSDLC — ${ps.label}</div>
+        <div class="body"><pre class="code-block">${escapeHtml(md.slice(0, 4000))}${md.length > 4000 ? '\n... (use /api/ssdlc/report/markdown for full report)' : ''}</pre></div>`;
+      main.appendChild(div);
+      main.scrollTop = main.scrollHeight;
+    })
+    .catch(e => console.warn('SSDLC report failed:', e));
+}
+
+// ── Model switching ─────────────────────────────────────────────────
+
+function switchModel(modelName) {
+  if (!modelName) return;
+  fetch('/api/switch-model', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: modelName })
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      STATE.model = data.current;
+      const el = document.getElementById('stat-model');
+      if (el) el.textContent = data.current;
+      setStatus(`Model switched: ${data.previous} → ${data.current}`);
+    } else {
+      setStatus('Model switch failed');
+    }
+  }).catch(e => {
+    setStatus('Model switch failed: ' + e.message);
+  });
+}
+</script>
+</body>
+</html>
