@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Parapet AI Contributors
+Copyright (c) 2026 Andrzej Wojciech Dobosz
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,18 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+ALTERNATIVE LICENSE: Apache License 2.0 with Patent Grant
+
+You may also use this software under the terms of the Apache License,
+Version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+
+Patent Grant: Subject to the terms of the Apache License, each contributor
+grants you a perpetual, worldwide, non-exclusive, no-charge, royalty-free,
+irrevocable patent license to make, have made, use, offer to sell, sell,
+import, and otherwise transfer the Software.
+
+Patent Notice: UPRP P.455821 (pending) — Bayesian model router + 6GB training method
+Trademark: UPRP Z.603439 (pending) — PARAPET AI®
+---
